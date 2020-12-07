@@ -13,24 +13,25 @@
 
 """Perform assembly based on debruijn graph."""
 
-import argparse
-import os
-import sys
-import networkx as nx
-import matplotlib
-from operator import itemgetter
 import random
+import os
+import argparse
+import sys
+from pathlib import Path
+import networkx as nx
+import matplotlib.pyplot as plt
+import numpy as np
 random.seed(9001)
 from random import randint
 import statistics
 
-__author__ = "Your Name"
-__copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__author__ = "Aurore Wilbrink"
+__copyright__ = "CY Tech - Cergy"
+__credits__ = ["Aurore Wilbrink"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "Aurore Wilbrink"
+__email__ = "wilbrinkau@eisti.eu"
 __status__ = "Developpement"
 
 def isfile(path):
@@ -66,20 +67,59 @@ def get_arguments():
 
 
 def read_fastq(fastq_file):
-    pass
-
+    """Extract from the file Sequences
+      :Parameters:
+          fastq_file: file .fq
+    Returns: A generator of sequences
+    """
+    with open(fastq_file, 'rt') as myfile:
+        sentences = myfile.readlines()
+        for sentence in sentences:
+            sentence = sentence[:-1]
+            if sentence[0] == "T" or sentence[0] == "G" or sentence[0] == "A" or sentence[0] == "C" :
+                yield sentence
 
 def cut_kmer(read, kmer_size):
-    pass
+    """ Generator of k-mer
+      :Parameters:
+          read : sequence extracted with read_fastq
+          kmer_size : size of our k-mer
+    Returns: K-mer
+    """
+    for i in range(len(read)-kmer_size + 1):
+        kmer = read[i:i+kmer_size]
+        yield kmer
 
 
 def build_kmer_dict(fastq_file, kmer_size):
-    pass
-
+    """-	build_kmer_dict /2 qui prend un fichier fastq, une taille k- mer
+    et retourne un dictionnaire ayant pour clé le k-mer
+    et pour valeur le nombre d’occurrence de ce k-mer"""
+    dictionary = {}
+    for sequence in read_fastq(fastq_file) :
+        for kmer in cut_kmer(sequence, kmer_size):
+            if kmer in dictionary:
+                dictionary[kmer]+=1
+            else :
+                dictionary[kmer]=1
+    return dictionary
 
 def build_graph(kmer_dict):
-    pass
+    """La fonction build_graph /4 prendra en entrée un dictionnaire de k-mer
+    et créera l’arbre de k-mers préfixes et suffixes décrit précédemment.
+    Les arcs auront pour paramètre obligatoire un poids nommé “weight”.
 
+Validez à l’aide de pytest le test de construction, testez votre implémentation de pylint et n’oubliez pas de commiter et pusher.
+"""
+    G=nx.DiGraph()
+    for kmer in kmer_dict:
+        kmer1=""
+        kmer2=""
+        for i in range(len(kmer)-1):
+            kmer1 = kmer1+kmer[i]
+            kmer2 = kmer2+kmer[i+1]
+        G.add_edge(kmer1, kmer2, weight=kmer_dict[kmer])
+    return G
 
 def remove_paths(graph, path_list, delete_entry_node, delete_sink_node):
     pass
@@ -108,16 +148,76 @@ def solve_out_tips(graph, ending_nodes):
     pass
 
 def get_starting_nodes(graph):
-    pass
+    """prend en entrée un graphe et retourne une liste de noeuds d’entrée """
+    # générateur tous les successeurs ou prefecesseur, on les compte
+    starting_nodes = []
+    for node in graph.nodes():
+        if len(list(graph.predecessors(node))) == 0:
+            starting_nodes.append(node)
+    return np.array(starting_nodes)
+
 
 def get_sink_nodes(graph):
-    pass
+    """prend en entrée un graphe et retourne une liste de noeuds de sortie """
+    ending_nodes = []
+    for node in graph.nodes():
+        if len(list(graph.successors(node))) == 0:
+            ending_nodes.append(node)
+    return np.array(ending_nodes)
+
 
 def get_contigs(graph, starting_nodes, ending_nodes):
-    pass
+    """prend un graphe, une liste de noeuds d’entrée et une liste de sortie
+    et retourne une liste de tuple(contig, taille du contig) """
+    contigs = []
+    print("youhou", starting_nodes, ending_nodes)
+    for start in starting_nodes :
+        print("start : ", start)
+        for end in ending_nodes :
+            print("end : ", end)
+            for contig in nx.all_simple_paths(graph, start, end, cutoff=None) :
+                print(contig)
+                print("contig 00 : ", contig[0][:-1])
+                print("contig 1:", contig[1:])
+                string_contig = contig[0][:-1] + "".join([sommet[0] for sommet in contig[1:]])
+                print(string_contig)
+                print("*"*20)
+                contigs.append((string_contig, len(contig)))
+    print(contigs)
+    return contigs
+    # (début, node milieu.., node fin, nombre de nodes)
+
+def fill(text, width=80):
+    """Split text with a line return to respect fasta format"""
+    return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
+
 
 def save_contigs(contigs_list, output_file):
-    pass
+    """-	save_contigs /2 qui prend une liste de tuple (contig, taille du contig)
+    et un nom de fichier de sortie et écrit un fichier de sortie contenant les contigs selon le format fasta
+    (retour chariot tous les 80 caractères) à l’aide de la fonction fill:"""
+
+
+
+def draw_graph(graph, graphimg_file):
+    """Draw the graph
+    """
+    fig, ax = plt.subplots()
+    elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] > 3]
+    #print(elarge)
+    esmall = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] <= 3]
+    #print(elarge)
+    # Draw the graph with networkx
+    #pos=nx.spring_layout(graph)
+    pos = nx.random_layout(graph)
+    nx.draw_networkx_nodes(graph, pos, node_size=6)
+    nx.draw_networkx_edges(graph, pos, edgelist=elarge, width=6)
+    nx.draw_networkx_edges(graph, pos, edgelist=esmall, width=6, alpha=0.5,
+                           edge_color='b', style='dashed')
+    #nx.draw_networkx(graph, pos, node_size=10, with_labels=False)
+    # save image
+    plt.savefig(graphimg_file)
+
 
 #==============================================================
 # Main program
@@ -130,4 +230,17 @@ def main():
     args = get_arguments()
 
 if __name__ == '__main__':
-    main()
+    path = Path(__file__).resolve().parent
+    myfile_path = Path("..") / "eva71_two_reads.fq"
+    print(myfile_path)
+
+    graph = build_graph(build_kmer_dict(myfile_path, 7))
+    draw_graph(graph, "graphimg_file")
+    print(get_starting_nodes(graph))
+    get_contigs(graph, get_starting_nodes(graph), get_sink_nodes(graph))
+
+
+
+
+    # main()
+
