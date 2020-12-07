@@ -79,6 +79,7 @@ def read_fastq(fastq_file):
             if sentence[0] == "T" or sentence[0] == "G" or sentence[0] == "A" or sentence[0] == "C" :
                 yield sentence
 
+
 def cut_kmer(read, kmer_size):
     """ Generator of k-mer
       :Parameters:
@@ -104,6 +105,7 @@ def build_kmer_dict(fastq_file, kmer_size):
                 dictionary[kmer]=1
     return dictionary
 
+
 def build_graph(kmer_dict):
     """La fonction build_graph /4 prendra en entrée un dictionnaire de k-mer
     et créera l’arbre de k-mers préfixes et suffixes décrit précédemment.
@@ -121,8 +123,10 @@ Validez à l’aide de pytest le test de construction, testez votre implémentat
         G.add_edge(kmer1, kmer2, weight=kmer_dict[kmer])
     return G
 
+
 def remove_paths(graph, path_list, delete_entry_node, delete_sink_node):
     pass
+
 
 def std(data):
     pass
@@ -132,8 +136,10 @@ def select_best_path(graph, path_list, path_length, weight_avg_list,
                      delete_entry_node=False, delete_sink_node=False):
     pass
 
+
 def path_average_weight(graph, path):
     pass
+
 
 def solve_bubble(graph, ancestor_node, descendant_node):
     pass
@@ -170,20 +176,11 @@ def get_contigs(graph, starting_nodes, ending_nodes):
     """prend un graphe, une liste de noeuds d’entrée et une liste de sortie
     et retourne une liste de tuple(contig, taille du contig) """
     contigs = []
-    print("youhou", starting_nodes, ending_nodes)
     for start in starting_nodes :
-        print("start : ", start)
         for end in ending_nodes :
-            print("end : ", end)
             for contig in nx.all_simple_paths(graph, start, end, cutoff=None) :
-                print(contig)
-                print("contig 00 : ", contig[0][:-1])
-                print("contig 1:", contig[1:])
-                string_contig = contig[0][:-1] + "".join([sommet[0] for sommet in contig[1:]])
-                print(string_contig)
-                print("*"*20)
-                contigs.append((string_contig, len(contig)))
-    print(contigs)
+                string_contig = contig[0][:-1] + "".join([sommet[0] for sommet in contig[1:-1]]) + contig[-1]
+                contigs.append((string_contig, len(string_contig)))
     return contigs
     # (début, node milieu.., node fin, nombre de nodes)
 
@@ -234,13 +231,17 @@ if __name__ == '__main__':
     myfile_path = Path("..") / "eva71_two_reads.fq"
     print(myfile_path)
 
-    graph = build_graph(build_kmer_dict(myfile_path, 7))
+    graph = build_graph(build_kmer_dict(myfile_path, 3))
     draw_graph(graph, "graphimg_file")
     print(get_starting_nodes(graph))
     get_contigs(graph, get_starting_nodes(graph), get_sink_nodes(graph))
 
-
-
-
+    print("++++"*30)
+    graph = nx.DiGraph()
+    graph.add_edges_from(
+        [("TC", "CA"), ("AC", "CA"), ("CA", "AG"), ("AG", "GC"), ("GC", "CG"), ("CG", "GA"), ("GA", "AT"),
+         ("GA", "AA")])
+    contig_list = get_contigs(graph, ["TC", "AC"], ["AT", "AA"])
+    print("contig_list print :", contig_list)
     # main()
 
