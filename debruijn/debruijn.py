@@ -18,12 +18,13 @@ import os
 import argparse
 import sys
 from pathlib import Path
+import statistics
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 random.seed(9001)
-from random import randint
-import statistics
+
+
 
 __author__ = "Aurore Wilbrink"
 __copyright__ = "CY Tech - Cergy"
@@ -33,6 +34,8 @@ __version__ = "1.0.0"
 __maintainer__ = "Aurore Wilbrink"
 __email__ = "wilbrinkau@eisti.eu"
 __status__ = "Developpement"
+
+debug = True
 
 def isfile(path):
     """Check if path is an existing file.
@@ -93,56 +96,153 @@ def cut_kmer(read, kmer_size):
 
 
 def build_kmer_dict(fastq_file, kmer_size):
-    """-	build_kmer_dict /2 qui prend un fichier fastq, une taille k- mer
-    et retourne un dictionnaire ayant pour clé le k-mer
-    et pour valeur le nombre d’occurrence de ce k-mer"""
+    """ Creation of a kmer dictionary
+      :Parameters:
+          fastq_file : a file fastq
+          kmer_size : size of kmers
+    Returns: a dictionary of k-mer {"key" = number of occurancy}
+    """
     dictionary = {}
     for sequence in read_fastq(fastq_file) :
         for kmer in cut_kmer(sequence, kmer_size):
             if kmer in dictionary:
-                dictionary[kmer]+=1
-            else :
-                dictionary[kmer]=1
+                dictionary[kmer] += 1
+            else:
+                dictionary[kmer] = 1
     return dictionary
 
 
 def build_graph(kmer_dict):
-    """La fonction build_graph /4 prendra en entrée un dictionnaire de k-mer
-    et créera l’arbre de k-mers préfixes et suffixes décrit précédemment.
-    Les arcs auront pour paramètre obligatoire un poids nommé “weight”.
+    """ Creation of graph
+      :Parameters:
+          kmer_dict : dictionary of kmer
+    Returns: a graph according to the kmer's dictionary
+    """
 
-Validez à l’aide de pytest le test de construction, testez votre implémentation de pylint et n’oubliez pas de commiter et pusher.
-"""
-    G=nx.DiGraph()
+    graph = nx.DiGraph()
     for kmer in kmer_dict:
-        kmer1=""
-        kmer2=""
+        kmer1 = ""
+        kmer2 = ""
         for i in range(len(kmer)-1):
             kmer1 = kmer1+kmer[i]
             kmer2 = kmer2+kmer[i+1]
-        G.add_edge(kmer1, kmer2, weight=kmer_dict[kmer])
-    return G
+        graph.add_edge(kmer1, kmer2, weight=kmer_dict[kmer])
+    return graph
 
 
 def remove_paths(graph, path_list, delete_entry_node, delete_sink_node):
-    pass
+    """ Function in order to remove paths
+      :Parameters:
+          graph : DiGraph
+          path_list : list of path
+          delete_entry_node : boolean in order to delete or not the entry_node
+          delete_sink_node : boolean in order to delete (or not) the sinking_node
+    Returns: a new graph without the unwilling paths
+    """
+
+    for path in path_list:
+        for i in range(len(path)):
+            if not(delete_entry_node) and i == 0:
+                continue
+            if not(delete_sink_node) and i == len(path) - 1:
+                continue
+            graph.remove_node(path[i])
+    return graph
 
 
 def std(data):
-    pass
+    """ Calculate standard deviation
+      :Parameters:
+          data : a number
+    Returns: Standard deviation of this number
+    """
+    return statistics.stdev(data)
 
 
 def select_best_path(graph, path_list, path_length, weight_avg_list, 
                      delete_entry_node=False, delete_sink_node=False):
-    pass
+    """qui prend un graphe, une liste de chemin, une liste donnant la longueur de chaque chemin,
+    une liste donnant le poids moyen de chaque chemin, delete_entry_node pour indiquer
+    si les noeuds d’entrée seront supprimés
+    et delete_sink_node pour indiquer si les noeuds de sortie seront supprimés
+    et retourne un graphe nettoyé des chemins indésirables.
+    Par défaut, delete_entry_node et delete_sink_node seront ici à False."""
+
+    index = []
+    max_weight = max(weight_avg_list)
+
+    print(len(path_list))
+    for i in range(len(path_list)):
+        print("i = ", i)
+        print("weight_avg_list[i] : ", weight_avg_list[i])
+        print("max_weight : ", max_weight)
+        if weight_avg_list[i] != max_weight :
+            print("[path_list[i]] : ", [path_list[i]])
+            graph = remove_paths(graph, [path_list[i]], delete_entry_node, delete_sink_node)
+            index.append(i)
+    for indice in index :
+        path_list.pop(indice)
+        print("path_list après : ", path_list)
+        print("path_length avant : ", path_length)
+        path_length.pop(indice)
+        print("path_length après : ", path_length)
+        print("weight_avg_list avant : ", weight_avg_list)
+        weight_avg_list.pop(indice)
+        print("weight_avg_list après : ", weight_avg_list)
+
+    if len(path_list) == 1:
+        return graph
+
+    max_length = max(path_length)
+    index = []
+    print("Avant length : len path list : ", len(path_list))
+    for i in range(len(path_list)):
+        if path_length[i] != max_length:
+            print("[path_list[i]] : ", [path_list[i]])
+            graph = remove_paths(graph, [path_list[i]], delete_entry_node, delete_sink_node)
+            index.append(i)
+    for indice in index:
+        print("path_list avant : ", path_list)
+        path_list.pop(indice)
+        print("path_list après : ", path_list)
+        print("path_length avant : ", path_length)
+        path_length.pop(indice)
+        print("path_length après : ", path_length)
+        print("weight_avg_list avant : ", weight_avg_list)
+        weight_avg_list.pop(indice)
+        print("weight_avg_list après : ", weight_avg_list)
+
+    if len(path_list) == 1:
+        return graph
+
+    choice = random.randint(0,len(path_list))
+
+    for i in range(len(path_list)):
+        if i != choice :
+            print("[path_list[i]] : ", [path_list[i]])
+            graph = remove_paths(graph, [path_list[i]], delete_entry_node, delete_sink_node)
+    return graph
 
 
 def path_average_weight(graph, path):
-    pass
+    """qui prend un graphe et un chemin et qui retourne un poids moyen."""
+    weights = []
+    for i in range(len(path)-1):
+        sommet_depart = path[i]
+        sommet_arrive = path[i+1]
+        weights.append(graph[sommet_depart][sommet_arrive]["weight"])
+    return np.mean(weights)
 
 
 def solve_bubble(graph, ancestor_node, descendant_node):
-    pass
+    """qui prend un graphe, un noeud ancêtre, un noeud descendant
+    et retourne un graph nettoyé de la bulle se trouvant entre ces deux noeuds
+    en utilisant les fonctions précédemment développée."""
+    for noeud in graph : print(noeud)
+    graph = remove_paths(graph, get_contigs(graph, [ancestor_node], [descendant_node]), delete_entry_node=False, delete_sink_node=False)
+    print("new")
+    for noeud in graph: print(noeud)
+    return graph
 
 def simplify_bubbles(graph):
     pass
@@ -176,13 +276,17 @@ def get_contigs(graph, starting_nodes, ending_nodes):
     """prend un graphe, une liste de noeuds d’entrée et une liste de sortie
     et retourne une liste de tuple(contig, taille du contig) """
     contigs = []
-    for start in starting_nodes :
-        for end in ending_nodes :
-            for contig in nx.all_simple_paths(graph, start, end, cutoff=None) :
+    if debug:
+        print("starting node :", starting_nodes)
+        print("ending_nodes : ", ending_nodes)
+    for start in starting_nodes:
+        for end in ending_nodes:
+            for contig in nx.all_simple_paths(graph, start, end, cutoff=None):
+                if debug: print("contig = ", contig)
                 string_contig = contig[0][:-1] + "".join([sommet[0] for sommet in contig[1:-1]]) + contig[-1]
                 contigs.append((string_contig, len(string_contig)))
+    if debug: print("contigs = ", contigs)
     return contigs
-    # (début, node milieu.., node fin, nombre de nodes)
 
 def fill(text, width=80):
     """Split text with a line return to respect fasta format"""
@@ -193,8 +297,15 @@ def save_contigs(contigs_list, output_file):
     """-	save_contigs /2 qui prend une liste de tuple (contig, taille du contig)
     et un nom de fichier de sortie et écrit un fichier de sortie contenant les contigs selon le format fasta
     (retour chariot tous les 80 caractères) à l’aide de la fonction fill:"""
+    # print(contigs_list)
 
-
+    f = open(output_file, "w")
+    i = 0
+    for sequence, lenght in contigs_list:
+        line = ">contig_{0} len={1}\n{2}\n".format(str(i), str(lenght), fill(sequence))
+        f.write(line)
+        i += 1
+    f.close()
 
 def draw_graph(graph, graphimg_file):
     """Draw the graph
@@ -229,19 +340,21 @@ def main():
 if __name__ == '__main__':
     path = Path(__file__).resolve().parent
     myfile_path = Path("..") / "eva71_two_reads.fq"
-    print(myfile_path)
+    graph = build_graph(build_kmer_dict(myfile_path, 4))
 
-    graph = build_graph(build_kmer_dict(myfile_path, 3))
-    draw_graph(graph, "graphimg_file")
-    print(get_starting_nodes(graph))
-    get_contigs(graph, get_starting_nodes(graph), get_sink_nodes(graph))
-
-    print("++++"*30)
-    graph = nx.DiGraph()
-    graph.add_edges_from(
-        [("TC", "CA"), ("AC", "CA"), ("CA", "AG"), ("AG", "GC"), ("GC", "CG"), ("CG", "GA"), ("GA", "AT"),
-         ("GA", "AA")])
-    contig_list = get_contigs(graph, ["TC", "AC"], ["AT", "AA"])
-    print("contig_list print :", contig_list)
+    save_contigs(get_contigs(graph,get_starting_nodes(graph), get_sink_nodes(graph)), "output_file.txt")
     # main()
 
+    graph = nx.DiGraph()
+    graph.add_edges_from(
+        [("TCA", "CAA"), ("ACA", "CAA"), ("CAA", "AGA"), ("AGA", "GCA"), ("GCA", "CGA"), ("CGA", "GAA"), ("GAA", "ATA"),
+         ("GAA", "AAA")])
+    contig_list = get_contigs(graph, ["TCA", "ACA"], ["ATA", "AAA"])
+
+
+    graph_1 = nx.DiGraph()
+    graph_1.add_weighted_edges_from([(1, 2, 10), (3, 2, 10), (2, 4, 15),
+                                     (4, 5, 15), (2, 10, 10), (10, 5, 10),
+                                     (2, 8, 3), (8, 9, 3), (9, 5, 3),
+                                     (5, 6, 10), (5, 7, 10)])
+    graph_1 = solve_bubble(graph_1, 2, 5)
