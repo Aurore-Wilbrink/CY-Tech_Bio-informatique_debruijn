@@ -171,58 +171,51 @@ def select_best_path(graph, path_list, path_length, weight_avg_list,
     index = []
     max_weight = max(weight_avg_list)
 
-    print(len(path_list))
+    #print(len(path_list))
     for i in range(len(path_list)):
-        print("i = ", i)
-        print("weight_avg_list[i] : ", weight_avg_list[i])
-        print("max_weight : ", max_weight)
+        # #print("i = ", i)
+        # #print("weight_avg_list[i] : ", weight_avg_list[i])
+        # #print("max_weight : ", max_weight)
         if weight_avg_list[i] != max_weight :
-            print("[path_list[i]] : ", [path_list[i]])
+            # #print("[path_list[i]] : ", [path_list[i]])
             graph = remove_paths(graph, [path_list[i]], delete_entry_node, delete_sink_node)
             index.append(i)
+    index = sorted(index, reverse=True)
     for indice in index :
         path_list.pop(indice)
-        print("path_list après : ", path_list)
-        print("path_length avant : ", path_length)
+        # #print("path_list après : ", path_list)
+        # #print("path_length avant : ", path_length)
         path_length.pop(indice)
-        print("path_length après : ", path_length)
-        print("weight_avg_list avant : ", weight_avg_list)
+        # #print("path_length après : ", path_length)
+        # #print("weight_avg_list avant : ", weight_avg_list)
         weight_avg_list.pop(indice)
-        print("weight_avg_list après : ", weight_avg_list)
+        # #print("weight_avg_list après : ", weight_avg_list)
 
     if len(path_list) == 1:
         return graph
 
     max_length = max(path_length)
     index = []
-    print("Avant length : len path list : ", len(path_list))
+    #print("Avant length : len path list : ", len(path_list))
     for i in range(len(path_list)):
         if path_length[i] != max_length:
-            print("[path_list[i]] : ", [path_list[i]])
+            # #print("[path_list[i]] : ", [path_list[i]])
             graph = remove_paths(graph, [path_list[i]], delete_entry_node, delete_sink_node)
             index.append(i)
+    index = sorted(index, reverse=True)
     for indice in index:
-        print("path_list avant : ", path_list)
+        # #print("path_list avant : ", path_list)
         path_list.pop(indice)
-        print("path_list après : ", path_list)
-        print("path_length avant : ", path_length)
+        # #print("path_list après : ", path_list)
+        # #print("path_length avant : ", path_length)
         path_length.pop(indice)
-        print("path_length après : ", path_length)
-        print("weight_avg_list avant : ", weight_avg_list)
+        # #print("path_length après : ", path_length)
+        # #print("weight_avg_list avant : ", weight_avg_list)
         weight_avg_list.pop(indice)
-        print("weight_avg_list après : ", weight_avg_list)
+        # #print("weight_avg_list après : ", weight_avg_list)
 
     if len(path_list) == 1:
         return graph
-
-    choice = random.randint(0,len(path_list))
-
-    for i in range(len(path_list)):
-        if i != choice :
-            print("[path_list[i]] : ", [path_list[i]])
-            graph = remove_paths(graph, [path_list[i]], delete_entry_node, delete_sink_node)
-    return graph
-
 
 def path_average_weight(graph, path):
     """qui prend un graphe et un chemin et qui retourne un poids moyen."""
@@ -238,14 +231,17 @@ def solve_bubble(graph, ancestor_node, descendant_node):
     """qui prend un graphe, un noeud ancêtre, un noeud descendant
     et retourne un graph nettoyé de la bulle se trouvant entre ces deux noeuds
     en utilisant les fonctions précédemment développée."""
-    for noeud in graph : print(noeud)
-    graph = remove_paths(graph, get_contigs(graph, [ancestor_node], [descendant_node]), delete_entry_node=False, delete_sink_node=False)
-    print("new")
-    for noeud in graph: print(noeud)
+    paths = list(nx.all_simple_paths(graph,ancestor_node, descendant_node))
+    graph = select_best_path(
+        graph,
+        paths,
+        [len(path) for path in paths],
+        [path_average_weight(graph,path) for path in paths]
+    )
     return graph
 
 def simplify_bubbles(graph):
-    pass
+    return graph_without_bubble
 
 def solve_entry_tips(graph, starting_nodes):
     pass
@@ -282,6 +278,7 @@ def get_contigs(graph, starting_nodes, ending_nodes):
     for start in starting_nodes:
         for end in ending_nodes:
             for contig in nx.all_simple_paths(graph, start, end, cutoff=None):
+                contig = [str(contig_i) for contig_i in contig]
                 if debug: print("contig = ", contig)
                 string_contig = contig[0][:-1] + "".join([sommet[0] for sommet in contig[1:-1]]) + contig[-1]
                 contigs.append((string_contig, len(string_contig)))
